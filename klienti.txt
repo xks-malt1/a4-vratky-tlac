@@ -1,0 +1,8 @@
+# Zoznam klientov pre A4 hárky (vratky)
+# UKÁŽKOVÉ hodnoty — prepíš ich vlastnými.
+# Jeden riadok = jeden klient. Riadky s # sa ignorujú.
+KLIENT A
+KLIENT B
+KLIENT C
+PRIKLAD S.R.O.
+UKAZKA SK
