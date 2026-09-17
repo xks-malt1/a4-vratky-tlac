@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A4 vratky – tlač hárkov</title>
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --red:#c8102e;
+    --paper:#ffffff;
+    --bg:#ececec;
+    --line:#d0d0d0;
+    --accent:#111;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI", Arial, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+  }
+
+  /* ===== Ovládací panel (len na obrazovke) ===== */
+  #panel{
+    max-width:1200px;
+    margin:0 auto;
+    padding:20px;
+  }
+  h1{
+    font-size:20px;
+    margin:0 0 4px;
+    letter-spacing:.02em;
+  }
+  .sub{color:#666;font-size:13px;margin-bottom:18px;}
+  .grid{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  @media(max-width:900px){ .grid{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px;
+  }
+  label{display:block;font-size:12px;font-weight:600;margin:10px 0 4px;color:#444;}
+  input[type=text], select{
+    width:100%;
+    padding:9px 10px;
+    font-size:15px;
+    border:1px solid #bbb;
+    border-radius:6px;
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .presets button{
+    font-size:12px;
+    padding:5px 9px;
+    border:1px solid #bbb;
+    background:#f7f7f7;
+    border-radius:14px;
+    cursor:pointer;
+  }
+  .presets button:hover{background:#eee;}
+  .btn{
+    display:inline-block;
+    padding:10px 16px;
+    font-size:14px;
+    font-weight:600;
+    border-radius:6px;
+    border:1px solid transparent;
+    cursor:pointer;
+  }
+  .btn-add{background:var(--accent);color:#fff;width:100%;margin-top:14px;}
+  .btn-print{background:var(--red);color:#fff;}
+  .btn-clear{background:#fff;border-color:#bbb;color:#444;}
+  .toolbar{display:flex;gap:10px;margin:14px 0;}
+
+  #list{list-style:none;margin:14px 0 0;padding:0;}
+  #list li{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    margin-bottom:6px;
+    font-size:14px;
+    background:#fafafa;
+  }
+  #list li b{color:var(--red);}
+  #list li .meta{color:#777;font-size:12px;}
+  #list li button{
+    border:none;background:none;color:#999;font-size:16px;cursor:pointer;
+  }
+  #list li button:hover{color:var(--red);}
+  .empty{color:#999;font-size:13px;font-style:italic;margin-top:12px;}
+
+  .opts{display:flex;gap:16px;align-items:center;font-size:13px;margin-top:10px;flex-wrap:wrap;}
+  .opts label{display:inline;font-weight:400;margin:0;}
+
+  /* ===== Náhľad + tlačové strany ===== */
+  #sheets{display:flex;flex-direction:column;gap:16px;}
+  .sheet{
+    background:#fff;
+    border:1px solid var(--line);
+    box-shadow:0 1px 4px rgba(0,0,0,.12);
+    width:100%;
+    aspect-ratio:297/210;   /* na šírku */
+    position:relative;
+    overflow:hidden;
+    padding:4%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    container-type: inline-size;
+  }
+  .sheet.portrait{aspect-ratio:210/297;}
+  .sheet .client{
+    font-family:"Arial Black", Arial, sans-serif;
+    font-weight:900;
+    text-align:center;
+    line-height:1.05;
+    text-transform:uppercase;
+    margin-top:2%;
+    width:100%;
+    white-space:nowrap;
+    font-size:calc(var(--fs) * 1cqw);
+  }
+  .sheet .type{
+    font-family:"Arial Black", Arial, sans-serif;
+    font-weight:900;
+    text-align:center;
+    text-transform:uppercase;
+    margin-top:1.5%;
+    width:100%;
+    white-space:nowrap;
+    font-size:calc(var(--fst) * 1cqw);
+  }
+  .sheet .datebox{
+    position:absolute;
+    right:5%;
+    bottom:6%;
+    font-family:"Arial Black", Arial, sans-serif;
+    font-weight:900;
+    font-size:calc(var(--fs) * 0.38cqw);
+  }
+  .sheet .stickerzone{
+    margin-top:auto;
+    margin-bottom:14%;
+    width:34%;
+    aspect-ratio:3/2;
+    border:2px dashed #c9c9c9;
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#c0c0c0;
+    font-size:12px;
+    letter-spacing:.05em;
+  }
+  .red{color:var(--red);}
+  .black{color:#111;}
+  .hide-zone .stickerzone{border-color:transparent;color:transparent;}
+
+  /* ===== Tlač ===== */
+  @media print{
+    body{background:#fff;}
+    #panel .card, #panel h1, #panel .sub, .toolbar, .no-print{display:none !important;}
+    #panel{max-width:none;padding:0;margin:0;}
+    .grid{display:block;}
+    #sheets{gap:0;}
+    .sheet{
+      border:none;box-shadow:none;
+      width:100%;height:100vh;
+      aspect-ratio:auto;
+      page-break-after:always;
+      padding:10mm;
+    }
+    .sheet:last-child{page-break-after:auto;}
+    .stickerzone{
+      border-color:#e0e0e0;
+    }
+    .hide-zone .stickerzone{border-color:transparent;color:transparent;}
+  }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>Tlač A4 hárkov na vratky</h1>
+  <div class="sub">Vyplň klienta a typ, pridaj do zoznamu, vytlač. Každý riadok = jedna A4. Štítok sa nalepí do vyznačenej zóny.</div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <label>Klienti <span style="font-weight:400;color:#999">(klik = rovno pridá hárok)</span></label>
+        <div class="presets" id="clientChips"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-clear" style="padding:6px 10px;font-size:12px;" id="loadTxtBtn">📄 Načítať klientov z .txt</button>
+          <button class="btn btn-clear" style="padding:6px 10px;font-size:12px;" id="resetClientsBtn" title="Vráti vstavaný zoznam">↺ Predvolený zoznam</button>
+          <input type="file" id="txtFile" accept=".txt,text/plain" style="display:none">
+        </div>
+
+        <label for="client">Iný klient (voľný text)</label>
+        <input type="text" id="client" list="clients" placeholder="napr. KLIENT A" autocomplete="off">
+        <datalist id="clients"></datalist>
+
+        <label for="type">Typ / poznámka <span style="font-weight:400;color:#999">(predvolené: VRATKY)</span></label>
+        <input type="text" id="type" placeholder="napr. VRATKY" value="VRATKY">
+        <div class="presets" id="typePresets">
+          <button data-v="VRATKY">vratky</button>
+          <button data-v="T RETURN">T Return</button>
+          <button data-v="T RETURN COD">T Return COD</button>
+          <button data-v="CLAIM ASSISTANT">Claim Assistant</button>
+          <button data-v="">— bez typu —</button>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="date">Dátum (voliteľný)</label>
+            <input type="text" id="date" placeholder="23.7.">
+          </div>
+          <div>
+            <label for="copies">Počet kópií</label>
+            <select id="copies">
+              <option>1</option><option>2</option><option>3</option>
+              <option>4</option><option>5</option><option>10</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn btn-add" id="addBtn">Pridať do zoznamu</button>
+
+        <div class="opts">
+          <label><input type="radio" name="color" value="red" checked> červená (fixka)</label>
+          <label><input type="radio" name="color" value="black"> čierna</label>
+          <label><input type="checkbox" id="portrait"> na výšku</label>
+          <label><input type="checkbox" id="zone" checked> zóna pre štítok</label>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="toolbar">
+          <button class="btn btn-print" id="printBtn">🖨 Vytlačiť všetko</button>
+          <button class="btn btn-clear" id="clearBtn">Vymazať zoznam</button>
+        </div>
+        <ul id="list"></ul>
+        <div class="empty" id="emptyMsg">Zoznam je prázdny.</div>
+      </div>
+    </div>
+
+    <div id="sheets"></div>
+  </div>
+</div>
+
+<script src="klienti.js"></script>
+<script>
+// UKÁŽKOVÝ zoznam klientov — nahraď vlastným.
+// Možnosti (v tomto poradí priority):
+//   1) klienti.js  — načíta sa automaticky pri otvorení stránky
+//   2) klienti.txt — načítaš tlačidlom v aplikácii (uloží sa do prehliadača)
+//   3) tento vstavaný zoznam nižšie (záloha)
+const DEFAULT_CLIENTS = ["KLIENT A","KLIENT B","KLIENT C","PRIKLAD S.R.O.","UKAZKA SK"];
+
+let CLIENTS = DEFAULT_CLIENTS.slice();
+if (typeof CLIENTS_EXTERNAL !== 'undefined' && Array.isArray(CLIENTS_EXTERNAL) && CLIENTS_EXTERNAL.length) {
+  // klienti.js má prednosť — je zdrojom pravdy pri každom otvorení
+  CLIENTS = CLIENTS_EXTERNAL.slice();
+} else {
+  try{
+    const saved = localStorage.getItem('a4VratkyClients');
+    if(saved){ const arr = JSON.parse(saved); if(Array.isArray(arr) && arr.length) CLIENTS = arr; }
+  }catch(e){ /* localStorage nedostupné — beží sa na vstavanom zozname */ }
+}
+
+const dl = document.getElementById('clients');
+const chips = document.getElementById('clientChips');
+
+function buildClientUI(){
+  dl.innerHTML=''; chips.innerHTML='';
+  CLIENTS.forEach(c => {
+    const o=document.createElement('option'); o.value=c; dl.appendChild(o);
+    const b=document.createElement('button'); b.textContent=c;
+    b.onclick=()=>addEntry(c);
+    chips.appendChild(b);
+  });
+}
+buildClientUI();
+
+document.getElementById('loadTxtBtn').onclick = ()=> document.getElementById('txtFile').click();
+document.getElementById('txtFile').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    const lines = r.result.split(/\r?\n/).map(s=>s.trim()).filter(s=>s && !s.startsWith('#'));
+    if(!lines.length){ alert('Súbor je prázdny — zoznam sa nezmenil.'); return; }
+    CLIENTS = lines;
+    try{ localStorage.setItem('a4VratkyClients', JSON.stringify(CLIENTS)); }catch(e){}
+    buildClientUI();
+  };
+  r.readAsText(f);
+  e.target.value='';
+});
+document.getElementById('resetClientsBtn').onclick = ()=>{
+  CLIENTS = DEFAULT_CLIENTS.slice();
+  try{ localStorage.removeItem('a4VratkyClients'); }catch(e){}
+  buildClientUI();
+};
+
+let entries = [];
+
+const $ = id => document.getElementById(id);
+
+function addEntry(client){
+  const type = $('type').value.trim();
+  const date = $('date').value.trim();
+  const copies = parseInt($('copies').value,10);
+  entries.push({client, type, date, copies});
+  $('type').value='VRATKY';
+  render();
+}
+
+document.getElementById('typePresets').addEventListener('click', e=>{
+  if(e.target.dataset.v !== undefined){ $('type').value = e.target.dataset.v; }
+});
+
+$('addBtn').addEventListener('click', ()=>{
+  const client = $('client').value.trim();
+  if(!client){ $('client').focus(); return; }
+  addEntry(client);
+  $('client').value=''; $('client').focus();
+});
+
+$('client').addEventListener('keydown', e=>{ if(e.key==='Enter') $('addBtn').click(); });
+
+$('clearBtn').addEventListener('click', ()=>{ entries=[]; render(); });
+$('printBtn').addEventListener('click', ()=>{ if(entries.length) window.print(); });
+
+document.querySelectorAll('input[name=color]').forEach(r=>r.addEventListener('change', render));
+$('portrait').addEventListener('change', render);
+$('zone').addEventListener('change', render);
+
+function render(){
+  // zoznam
+  const list = $('list');
+  list.innerHTML='';
+  $('emptyMsg').style.display = entries.length ? 'none':'block';
+  entries.forEach((en,i)=>{
+    const li=document.createElement('li');
+    li.innerHTML = `<span><b>${esc(en.client)}</b> ${esc(en.type)} <span class="meta">${esc(en.date)}${en.copies>1 ? ' · '+en.copies+'×':''}</span></span>`;
+    const del=document.createElement('button');
+    del.textContent='✕';
+    del.title='Odstrániť';
+    del.onclick=()=>{ entries.splice(i,1); render(); };
+    li.appendChild(del);
+    list.appendChild(li);
+  });
+
+  // hárky
+  const color = document.querySelector('input[name=color]:checked').value;
+  const portrait = $('portrait').checked;
+  const zone = $('zone').checked;
+  const sheets = $('sheets');
+  sheets.innerHTML='';
+  entries.forEach(en=>{
+    for(let k=0;k<en.copies;k++){
+      const s=document.createElement('div');
+      s.className='sheet '+(portrait?'portrait ':'')+(zone?'':'hide-zone');
+      // 1. riadok: KLIENT VRATKY (default). Iný typ (T Return, Claim Assistant...) ide do 2. riadku.
+      const line1 = en.type ? en.client + ' VRATKY' : en.client;
+      const line2 = (en.type && en.type !== 'VRATKY') ? en.type : '';
+      const fs = lineFit(line1, portrait ? 22 : 25);
+      s.style.setProperty('--fs', fs);
+      s.style.setProperty('--fst', lineFit(line2, fs * 0.55));
+      s.innerHTML = `
+        <div class="client ${color}">${esc(line1)}</div>
+        ${line2?`<div class="type ${color}">${esc(line2)}</div>`:''}
+        <div class="stickerzone">ŠTÍTOK</div>
+        ${en.date?`<div class="datebox ${color}">${esc(en.date)}</div>`:''}
+      `;
+      sheets.appendChild(s);
+    }
+  });
+}
+
+function lineFit(text, cap){
+  // veľkosť v cqw tak, aby sa celý text zmestil na JEDEN riadok (~92 % šírky hárku)
+  const len = Math.max((text||'').length, 2);
+  return Math.max(5, Math.min(cap, 125/len));
+}
+
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+render();
+</script>
+</body>
+</html>
